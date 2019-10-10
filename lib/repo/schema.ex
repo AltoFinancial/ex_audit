@@ -32,7 +32,7 @@ defmodule ExAudit.Schema do
 
       case result do
         {:ok, resulting_struct} ->
-            track_change(module, :updated, struct, resulting_struct, opts)
+          track_change(module, :updated, struct, resulting_struct, opts)
 
         _ ->
           :ok
