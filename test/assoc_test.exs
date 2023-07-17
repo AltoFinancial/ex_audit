@@ -3,7 +3,7 @@ defmodule AssocTest do
 
   import Ecto.Query
 
-  alias ExAudit.Test.{Repo, Version, BlogPost, Comment, Util, UserGroup}
+  alias ExAudit.Test.{Repo, Version, BlogPost, Comment, Util, User, UserGroup}
 
   test "comment lifecycle tracked" do
     user = Util.create_user()
@@ -29,6 +29,26 @@ defmodule AssocTest do
     assert actor_id == user.id
   end
 
+  test "structs configured as primitives are treated as primitives" do
+    {:ok, old_date} = Date.new(2000, 1, 1)
+    params = %{name: "Bob", email: "foo@bar.com", birthday: old_date}
+    changeset = User.changeset(%User{}, params)
+    {:ok, user} = Repo.insert(changeset)
+
+    new_date = Date.add(old_date, 17)
+    params = %{birthday: new_date}
+    changeset = User.changeset(user, params)
+    {:ok, user} = Repo.update(changeset)
+
+    [version | _] = Repo.history(user)
+
+    assert %{
+             patch: %{
+               birthday: {:changed, {:primitive_change, ^old_date, ^new_date}}
+             }
+           } = version
+  end
+
   test "should track cascading deletions (before they happen)" do
     user = Util.create_user()
 
@@ -41,10 +61,12 @@ defmodule AssocTest do
         %{
           body: "lorem impusdrfnia",
           author_id: user.id
-        }, %{
+        },
+        %{
           body: "That's a nice article",
           author_id: user.id
-        }, %{
+        },
+        %{
           body: "We want more of this CONTENT",
           author_id: user.id
         }
@@ -56,13 +78,18 @@ defmodule AssocTest do
 
     Repo.delete(blog_post)
 
-    comment_ids = Enum.map(comments, &(&1.id))
+    comment_ids = Enum.map(comments, & &1.id)
 
-    versions = Repo.all(from v in Version,
-      where: v.entity_id in ^comment_ids,
-      where: v.entity_schema == ^Comment)
+    versions =
+      Repo.all(
+        from(v in Version,
+          where: v.entity_id in ^comment_ids,
+          where: v.entity_schema == ^Comment
+        )
+      )
 
-    assert length(versions) == 6 # 3 created, 3 deleted
+    # 3 created, 3 deleted
+    assert length(versions) == 6
   end
 
   test "should return changesets from constraint errors" do
@@ -79,6 +106,5 @@ defmodule AssocTest do
       |> no_assoc_constraint(:groups)
 
     assert {:error, %Ecto.Changeset{}} = Repo.delete(deletion)
-
   end
 end
