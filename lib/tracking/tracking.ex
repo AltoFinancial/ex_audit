@@ -1,41 +1,34 @@
 defmodule ExAudit.Tracking do
-  def find_changes(module, action, struct_or_changeset, resulting_struct) do
-    old =
-      case {action, struct_or_changeset} do
-        {:created, _} -> %{}
-        {_, %Ecto.Changeset{data: struct}} -> struct
-        {_, %{} = struct} -> struct
-        {_, nil} -> %{}
-      end
+  def find_changes(action, struct_or_changeset, resulting_struct) do
+    old = case {action, struct_or_changeset} do
+      {:created, _} -> %{}
+      {_, %Ecto.Changeset{data: struct}} -> struct
+      {_, %{} = struct} -> struct
+      {_, nil} -> %{}
+    end
 
-    new =
-      case action do
-        x when x in [:updated, :created] ->
-          resulting_struct
+    new = case action do
+      x when x in [:updated, :created] ->
+        resulting_struct
+      :deleted -> %{}
+    end
 
-        :deleted ->
-          %{}
-      end
-
-    compare_versions(module, action, old, new)
+    compare_versions(action, old, new)
   end
 
-  def compare_versions(module, action, old, new) do
+  def compare_versions(action, old, new) do
     schema = Map.get(old, :__struct__, Map.get(new, :__struct__))
 
-    if schema in tracked_schemas(module) do
+    if schema in tracked_schemas() do
       assocs = schema.__schema__(:associations)
 
-      patch =
-        ExAudit.Diff.diff(
-          ExAudit.Tracker.map_struct(old) |> Map.drop(assocs),
-          ExAudit.Tracker.map_struct(new) |> Map.drop(assocs)
-        )
+      patch = ExAudit.Diff.diff(
+        ExAudit.Tracker.map_struct(old) |> Map.drop(assocs),
+        ExAudit.Tracker.map_struct(new) |> Map.drop(assocs)
+      )
 
       case patch do
-        :not_changed ->
-          []
-
+        :not_changed -> []
         patch ->
           params = %{
             entity_id: Map.get(old, :id) || Map.get(new, :id),
@@ -53,7 +46,7 @@ defmodule ExAudit.Tracking do
 
   def track_change(module, action, changeset, resulting_struct, opts) do
     if not Keyword.get(opts, :ignore_audit, false) do
-      changes = find_changes(module, action, changeset, resulting_struct)
+      changes = find_changes(action, changeset, resulting_struct)
 
       insert_versions(module, changes, opts)
     end
@@ -77,8 +70,7 @@ defmodule ExAudit.Tracking do
         :ok
 
       _ ->
-        opts = Keyword.drop(opts, [:on_conflict, :conflict_target])
-        module.insert_all(version_schema(module), changes, opts)
+        module.insert_all(version_schema(), changes, opts)
     end
   end
 
@@ -102,7 +94,7 @@ defmodule ExAudit.Tracking do
       root ++ Enum.map(root, &find_assoc_deletion(module, &1, repo_opts))
     end)
     |> List.flatten()
-    |> Enum.flat_map(&compare_versions(module, :deleted, &1, %{}))
+    |> Enum.flat_map(&compare_versions(:deleted, &1, %{}))
   end
 
   def track_assoc_deletion(module, struct, opts) do
@@ -111,11 +103,11 @@ defmodule ExAudit.Tracking do
     insert_versions(module, deleted_structs, opts)
   end
 
-  def tracked_schemas(repo_module) do
-    Application.get_env(:ex_audit, :ecto_repos_schemas) |> get_in([repo_module, :tracked_schemas])
+  defp tracked_schemas do
+    Application.get_env(:ex_audit, :tracked_schemas)
   end
 
-  defp version_schema(repo_module) do
-    Application.get_env(:ex_audit, :ecto_repos_schemas) |> get_in([repo_module, :version_schema])
+  defp version_schema do
+    Application.get_env(:ex_audit, :version_schema)
   end
 end
