@@ -1,5 +1,6 @@
 defmodule ExAudit.Queryable do
   require Logger
+  import Ecto.Query
 
   def update_all(module, queryable, updates, opts) do
     Ecto.Repo.Queryable.update_all(module, queryable, updates, opts)
@@ -66,9 +67,9 @@ defmodule ExAudit.Queryable do
     end
   end
 
-  def history_query(%{id: id, __struct__: struct}) do
+  def history_query(module, %{id: id, __struct__: struct}) do
     from(
-        v in version_schema(),
+        v in version_schema(module),
         where: v.entity_id == ^id,
         where: v.entity_schema == ^struct,
         order_by: [desc: :recorded_at]
@@ -140,7 +141,7 @@ defmodule ExAudit.Queryable do
         _ -> res
       end
     else
-      Logger.warn([
+      Logger.warning([
         "Can't revert ",
         inspect(version),
         " because the entity would still be deleted"

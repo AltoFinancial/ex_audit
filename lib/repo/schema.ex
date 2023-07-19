@@ -1,6 +1,6 @@
 defmodule ExAudit.Schema do
   require Logger
-  def insert_all(module, name, schema_or_source, entries, tuplet = {_adapter_meta, opts}) do
+  def insert_all(module, name, schema_or_source, entries, tuplet = {_adapter_meta, _opts}) do
     # TODO!
     # opts = augment_opts(opts)
     Ecto.Repo.Schema.insert_all(module, name, schema_or_source, entries, tuplet)
@@ -66,7 +66,7 @@ defmodule ExAudit.Schema do
 
     augment_transaction(module, fn ->
       track_assoc_deletion(module, struct, opts)
-      result = Ecto.Repo.Schema.delete(module, name, struct, opts)
+      result = Ecto.Repo.Schema.delete(module, name, struct, tuplet)
 
       case result do
         {:ok, resulting_struct} ->

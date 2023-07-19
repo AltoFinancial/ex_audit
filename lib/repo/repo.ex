@@ -91,9 +91,7 @@ defmodule ExAudit.Repo do
         schema in tracked_schemas
       end
 
-      @compile {:inline, tracked?: 1}
-
-      defoverridable(tracked?: 1)
+      defoverridable(tracked?: 2)
 
       def insert(struct, opts) do
         repo = get_dynamic_repo()
@@ -227,7 +225,7 @@ defmodule ExAudit.Repo do
       end
 
       def history_query(struct) do
-        ExAudit.Queryable.history_query(struct)
+        ExAudit.Queryable.history_query(__MODULE__, struct)
       end
     end
   end
