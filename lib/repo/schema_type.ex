@@ -25,7 +25,7 @@ defmodule ExAudit.Type.Schema do
 
   def dump(schema) do
     case Enum.member?(schemas(), schema) do
-      true -> {:ok, schema.__schema__(:source)}
+      true -> {:ok, schema_name(schema)}
       _ -> :error
     end
   end
@@ -33,8 +33,16 @@ defmodule ExAudit.Type.Schema do
   defp get_schema_by_table(table) do
     schemas()
     |> Enum.find(fn schema ->
-      schema.__schema__(:source) == table
+      schema_name(schema) == table
     end)
+  end
+
+  defp schema_name(schema) do
+    if prefix = schema.__schema__(:prefix) do
+      prefix <> "." <> schema.__schema__(:source)
+    else
+      schema.__schema__(:source)
+    end
   end
 
   def type, do: :string
