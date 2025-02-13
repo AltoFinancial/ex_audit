@@ -17,6 +17,7 @@ config :ex_audit,
     ExAudit.Test.Repo => %{
       version_schema: ExAudit.Test.Version,
       tracked_schemas: [
+        ExAudit.Test.PrivateUser,
         ExAudit.Test.User,
         ExAudit.Test.BlogPost,
         ExAudit.Test.BlogPost.Section,

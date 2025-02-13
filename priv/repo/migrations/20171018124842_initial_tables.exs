@@ -9,6 +9,15 @@ defmodule ExAudit.Test.Repo.Migrations.InitialTables do
       timestamps(type: :utc_datetime)
     end
 
+    execute("CREATE SCHEMA private")
+
+    create table(:users, prefix: "private") do
+      add :name, :string
+      add :email, :string
+
+      timestamps(type: :utc_datetime)
+    end
+
     create table(:blog_post) do
       add :title, :string
       add :author_id, references(:users, on_update: :update_all, on_delete: :delete_all)
