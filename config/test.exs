@@ -16,6 +16,7 @@ config :ex_audit,
   version_schema: ExAudit.Test.Version,
   tracked_schemas: [
     ExAudit.Test.User,
+    ExAudit.Test.PrivateUser,
     ExAudit.Test.BlogPost,
     ExAudit.Test.BlogPost.Section,
     ExAudit.Test.Comment
